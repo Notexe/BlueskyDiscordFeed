@@ -1,0 +1,146 @@
+const { WebhookClient } = require("discord.js")
+const { AtpAgent } = require("@atproto/api")
+const { IdResolver } = require("@atproto/identity")
+const WebSocketClient = require('websocket').client;
+
+const config = require("./config.json")
+const blueskyClient = new AtpAgent({ service: config.bluesky.service })
+
+async function sendWebhook(embed) {
+    for (var i = 0; i < config.webhookURLs.length; i++) {
+        const webhook = new WebhookClient({ url: config.webhookURLs[i] })
+
+        await webhook.send({
+            embeds: [embed]
+        })
+    }
+}
+
+async function runBluesky() {
+    const idResolver = new IdResolver();
+
+    // Resolve handles to DIDs
+    accountDIDs = await Promise.all(
+        config.bluesky.accountHandles.map(async (handle) => {
+            try {
+                const res = await idResolver.handle.resolve(handle)
+                console.log(`Resolved ${handle} to ${res}`)
+                return res
+            } catch (err) {
+                console.log(`Failed to resolve handle ${handle}:`, err);
+                return null;
+            }
+        })
+    )
+
+    const wantedDids = accountDIDs.join('&');
+
+    const jetstreamSocket = new WebSocketClient()
+
+    jetstreamSocket.on('connectFailed', function (error) {
+        console.log("Connect error " + error);
+    })
+
+    jetstreamSocket.on("connect", function (connection) {
+        console.log("Bluesky Jetstream websocket client connected");
+
+        const pingServerInterval = setInterval(() => {
+            if (connection.connected) {
+                connection.ping();
+            }
+        }, 30 * 1000);
+
+        connection.on("error", function (error) {
+            console.log("Connection error: " + error)
+        });
+
+        connection.on("close", function (reason) {
+            console.log("Connection closed: " + reason);
+            clearInterval(pingServerInterval)
+        });
+
+        connection.on("message", async function (message) {
+            if (message.type === 'utf8') {
+                try {
+                    const data = JSON.parse(message.utf8Data);
+
+                    // Extra sanity check just in case the websocket starts sending posts from other accounts
+                    if (!accountDIDs.includes(data.did)) {
+                        return;
+                    }
+
+                    if (data.commit?.operation == "create") {
+
+                        if (data.commit?.record?.reply) {
+                            return;
+                        }
+
+                        const profileInfo = await blueskyClient.app.bsky.actor.getProfile({
+                            actor: data.did
+                        });
+
+                        const accountName = profileInfo.data.displayName || profileInfo.data.handle;
+
+                        let embed = {
+                            "title": `New Bluesky post from ${accountName}`,
+                            "description": data.commit.record.text,
+                            "url": `https://bsky.app/profile/${profileInfo.data.handle}/post/${data.commit.rkey}`,
+                            "color": 0x156cc7,
+                            "timestamp": (new Date(data.commit.record.createdAt)),
+                            "author": {
+                                "name": accountName,
+                                "icon_url": profileInfo.data.avatar
+                            }
+                        };
+
+                        // Check for embed and images
+                        if (data.commit.record.embed && data.commit.record.embed.images && data.commit.record.embed.images.length > 0) {
+                            // Get the CID of the first image
+                            const firstImage = data.commit.record.embed.images[0];
+                            const imageCID = firstImage.image.ref.$link.toString();
+
+                            embed.image = {
+                                url: `https://cdn.bsky.app/img/feed_fullsize/plain/${data.did}/${imageCID}@jpeg`
+                            };
+                        }
+
+                        if (data.commit.record.embed && data.commit.record.embed.video) {
+                            embed.image = {
+                                url: `https://video.bsky.app/watch/${data.did}/${data.commit.record.embed.video.ref.$link}/thumbnail.jpg`
+                            }
+                        }
+
+                        sendWebhook(embed)
+                    }
+                } catch (error) {
+                    console.error("Error parsing message or fetching profile:", error);
+                }
+            }
+        })
+    })
+
+    jetstreamSocket.connect(`wss://${config.bluesky.jetstreamServices[0]}/subscribe?wantedCollections=app.bsky.feed.post&wantedDids=${wantedDids}`)
+}
+
+async function main() {
+    const configErrors = [];
+
+    if (config.bluesky.accountHandles.length === 0) {
+        configErrors.push("No Bluesky accounts specified in config.")
+    }
+
+    if (config.webhookURLs.length === 0) {
+        configErrors.push("No webhook URLs specified in config.")
+    }
+
+    if (configErrors.length > 0) {
+        console.log("Error(s) found in configuration:");
+        configErrors.forEach(configWarning => console.log(`- ${configWarning}`));
+        process.exit(1);
+    }
+
+    console.log("\nInitialising BlueskyDiscordFeed!")
+    runBluesky()
+}
+
+main()

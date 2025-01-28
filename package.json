@@ -1,0 +1,25 @@
+{
+  "name": "blueskydiscordfeed",
+  "version": "1.0.0",
+  "description": "Monitors Bluesky posts from configured accounts and sends them to a Discord webhook",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Notexe/BlueskyDiscordFeed.git"
+  },
+  "author": "Notex",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Notexe/BlueskyDiscordFeed/issues"
+  },
+  "homepage": "https://github.com/Notexe/BlueskyDiscordFeed#readme",
+  "dependencies": {
+    "@atproto/api": "^0.13.31",
+    "@atproto/identity": "^0.4.5",
+    "discord.js": "^14.17.3",
+    "websocket": "^1.0.35"
+  }
+}
