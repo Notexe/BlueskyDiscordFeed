@@ -1,7 +1,7 @@
 {
   "name": "blueskydiscordfeed",
   "version": "1.0.0",
-  "description": "Monitors Bluesky posts from configured accounts and sends them to a Discord webhook",
+  "description": "Monitors Bluesky posts from configured accounts and sends them to Discord webhooks in embed form",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
