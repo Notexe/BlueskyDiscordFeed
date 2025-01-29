@@ -1,5 +1,8 @@
 # BlueskyDiscordFeed
-Monitors Bluesky posts from configured accounts and sends them to Discord webhooks
+Monitors Bluesky posts from configured accounts and sends them to Discord webhooks in embed form
+
+### Example:
+![Discord_FtOc5txjqa](https://github.com/user-attachments/assets/5a35e7db-ab7c-4a20-aa6b-c44d0f8a4eff)
 
 ## Running
 Requires NodeJS
