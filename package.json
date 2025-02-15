@@ -21,6 +21,6 @@
     "@atproto/api": "^0.13.31",
     "@atproto/identity": "^0.4.5",
     "discord.js": "^14.17.3",
-    "websocket": "^1.0.35"
+    "partysocket": "^1.0.3"
   }
 }

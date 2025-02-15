@@ -1,7 +1,7 @@
 const { WebhookClient } = require("discord.js")
 const { AtpAgent } = require("@atproto/api")
 const { IdResolver } = require("@atproto/identity")
-const WebSocketClient = require('websocket').client;
+const { WebSocket } = require("partysocket")
 
 const config = require("./config.json")
 const blueskyClient = new AtpAgent({ service: config.bluesky.service })
@@ -35,91 +35,89 @@ async function runBluesky() {
 
     const wantedDids = accountDIDs.join('&');
 
-    const jetstreamSocket = new WebSocketClient()
+    let urlIndex = 0;
 
-    jetstreamSocket.on('connectFailed', function (error) {
-        console.log("Connect error " + error);
-    })
-
-    jetstreamSocket.on("connect", function (connection) {
+    const urlProvider = () => {
+        const baseUrl = config.bluesky.jetstreamServices[urlIndex++ % config.bluesky.jetstreamServices.length];
+        const queryParams = new URLSearchParams({
+            wantedCollections: "app.bsky.feed.post",
+            wantedDids: wantedDids,
+        }).toString();
+    
+        console.log(`Trying ${baseUrl}`)
+        return `wss://${baseUrl}/subscribe?${queryParams}`;
+    };
+    
+    const jetstreamSocket = new WebSocket(urlProvider);
+    
+    jetstreamSocket.addEventListener("open", () => {
         console.log("Bluesky Jetstream websocket client connected");
+    });
 
-        const pingServerInterval = setInterval(() => {
-            if (connection.connected) {
-                connection.ping();
+    jetstreamSocket.addEventListener("error", (error) => {
+        console.log("Websocket connection error: " + error.error);
+    });
+
+    jetstreamSocket.addEventListener("close", (event) => {
+        console.log("Websocket connection closed: " + event.code);
+    });
+
+    jetstreamSocket.addEventListener("message", async (event) => {
+        try {
+            const data = JSON.parse(event.data);
+
+            // Extra sanity check just in case the websocket starts sending posts from other accounts
+            if (!accountDIDs.includes(data.did)) {
+                return;
             }
-        }, 30 * 1000);
 
-        connection.on("error", function (error) {
-            console.log("Connection error: " + error)
-        });
+            if (data.commit?.operation == "create") {
 
-        connection.on("close", function (reason) {
-            console.log("Connection closed: " + reason);
-            clearInterval(pingServerInterval)
-        });
-
-        connection.on("message", async function (message) {
-            if (message.type === 'utf8') {
-                try {
-                    const data = JSON.parse(message.utf8Data);
-
-                    // Extra sanity check just in case the websocket starts sending posts from other accounts
-                    if (!accountDIDs.includes(data.did)) {
-                        return;
-                    }
-
-                    if (data.commit?.operation == "create") {
-
-                        if (data.commit?.record?.reply) {
-                            return;
-                        }
-
-                        const profileInfo = await blueskyClient.app.bsky.actor.getProfile({
-                            actor: data.did
-                        });
-
-                        const accountName = profileInfo.data.displayName || profileInfo.data.handle;
-
-                        let embed = {
-                            "title": `New Bluesky post from ${accountName}`,
-                            "description": data.commit.record.text,
-                            "url": `https://bsky.app/profile/${profileInfo.data.handle}/post/${data.commit.rkey}`,
-                            "color": 0x156cc7,
-                            "timestamp": (new Date(data.commit.record.createdAt)),
-                            "author": {
-                                "name": accountName,
-                                "icon_url": profileInfo.data.avatar
-                            }
-                        };
-
-                        // Check for embed and images
-                        if (data.commit.record.embed && data.commit.record.embed.images && data.commit.record.embed.images.length > 0) {
-                            // Get the CID of the first image
-                            const firstImage = data.commit.record.embed.images[0];
-                            const imageCID = firstImage.image.ref.$link.toString();
-
-                            embed.image = {
-                                url: `https://cdn.bsky.app/img/feed_fullsize/plain/${data.did}/${imageCID}@jpeg`
-                            };
-                        }
-
-                        if (data.commit.record.embed && data.commit.record.embed.video) {
-                            embed.image = {
-                                url: `https://video.bsky.app/watch/${data.did}/${data.commit.record.embed.video.ref.$link}/thumbnail.jpg`
-                            }
-                        }
-
-                        sendWebhook(embed)
-                    }
-                } catch (error) {
-                    console.error("Error parsing message or fetching profile:", error);
+                if (data.commit?.record?.reply) {
+                    return;
                 }
-            }
-        })
-    })
 
-    jetstreamSocket.connect(`wss://${config.bluesky.jetstreamServices[0]}/subscribe?wantedCollections=app.bsky.feed.post&wantedDids=${wantedDids}`)
+                const profileInfo = await blueskyClient.app.bsky.actor.getProfile({
+                    actor: data.did
+                });
+
+                const accountName = profileInfo.data.displayName || profileInfo.data.handle;
+
+                let embed = {
+                    "title": `New Bluesky post from ${accountName}`,
+                    "description": data.commit.record.text,
+                    "url": `https://bsky.app/profile/${profileInfo.data.handle}/post/${data.commit.rkey}`,
+                    "color": 0x156cc7,
+                    "timestamp": (new Date(data.commit.record.createdAt)),
+                    "author": {
+                        "name": accountName,
+                        "icon_url": profileInfo.data.avatar
+                    }
+                };
+
+                // Check for embed and images
+                if (data.commit.record.embed && data.commit.record.embed.images && data.commit.record.embed.images.length > 0) {
+                    // Get the CID of the first image
+                    const firstImage = data.commit.record.embed.images[0];
+                    const imageCID = firstImage.image.ref.$link.toString();
+
+                    embed.image = {
+                        url: `https://cdn.bsky.app/img/feed_fullsize/plain/${data.did}/${imageCID}@jpeg`
+                    };
+                }
+
+                if (data.commit.record.embed && data.commit.record.embed.video) {
+                    embed.image = {
+                        url: `https://video.bsky.app/watch/${data.did}/${data.commit.record.embed.video.ref.$link}/thumbnail.jpg`
+                    }
+                }
+
+                sendWebhook(embed)
+            }
+        } catch (error) {
+            console.error("Error parsing message or fetching profile:", error);
+        }
+    });
 }
 
 async function main() {
