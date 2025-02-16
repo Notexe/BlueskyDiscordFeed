@@ -39,12 +39,9 @@ async function runBluesky() {
 
     const urlProvider = () => {
         const baseUrl = config.bluesky.jetstreamServices[urlIndex++ % config.bluesky.jetstreamServices.length];
-        const queryParams = new URLSearchParams({
-            wantedCollections: "app.bsky.feed.post",
-            wantedDids: wantedDids,
-        }).toString();
+        const queryParams = `wantedCollections=app.bsky.feed.post&wantedDids=${wantedDids}`;
     
-        console.log(`Trying ${baseUrl}`)
+        console.log(`Trying wss://${baseUrl}/subscribe?${queryParams}`)
         return `wss://${baseUrl}/subscribe?${queryParams}`;
     };
     
