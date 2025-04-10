@@ -2,8 +2,16 @@ const { WebhookClient } = require("discord.js")
 const { AtpAgent } = require("@atproto/api")
 const { IdResolver } = require("@atproto/identity")
 const { WebSocket } = require("partysocket")
+const fs = require('fs');
+const path = require('path');
 
-const config = require("./config.json")
+const defaultConfigPath = path.join(__dirname, "config.example.json");
+const configPath = fs.existsSync("/config/config.json")
+  ? "/config/config.json"
+  : defaultConfigPath;
+
+const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
 const blueskyClient = new AtpAgent({ service: config.bluesky.service })
 
 async function sendWebhook(embed) {
