@@ -28,6 +28,15 @@ RestartSec=3s
 WantedBy=multi-user.target
 ```
 
+### As a Docker compose file:
+```yaml
+services:
+  blueskydiscordfeed:
+    image: ghcr.io/notexe/blueskydiscordfeed:latest
+    volumes:
+      - /data:/config
+```
+
 ## config.json example:
 ```json
 {
