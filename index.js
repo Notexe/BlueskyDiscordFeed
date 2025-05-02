@@ -5,7 +5,7 @@ const { WebSocket } = require("partysocket")
 const fs = require('fs');
 const path = require('path');
 
-const defaultConfigPath = path.join(__dirname, "config.example.json");
+const defaultConfigPath = path.join(__dirname, "config.json");
 const configPath = fs.existsSync("/config/config.json")
   ? "/config/config.json"
   : defaultConfigPath;
