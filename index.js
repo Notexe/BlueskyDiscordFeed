@@ -41,7 +41,7 @@ async function runBluesky() {
         })
     )
 
-    const wantedDids = accountDIDs.join('&');
+    const wantedDids = accountDIDs.join('&wantedDids=');
 
     let urlIndex = 0;
 
