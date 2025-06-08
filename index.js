@@ -91,7 +91,7 @@ async function runBluesky() {
                 let embed = {
                     "title": `New Bluesky post from ${accountName}`,
                     "description": data.commit.record.text,
-                    "url": `https://bsky.app/profile/${profileInfo.data.handle}/post/${data.commit.rkey}`,
+                    "url": `https://bsky.app/profile/${data.did}/post/${data.commit.rkey}`,
                     "color": 0x156cc7,
                     "timestamp": (new Date(data.commit.record.createdAt)),
                     "author": {
