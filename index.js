@@ -96,7 +96,12 @@ async function runBluesky() {
                     "timestamp": (new Date(data.commit.record.createdAt)),
                     "author": {
                         "name": accountName,
-                        "icon_url": profileInfo.data.avatar
+                        "icon_url": profileInfo.data.avatar,
+                        "url": `https://bsky.app/profile/${data.did}`
+                    },
+                    "footer": {
+                        "text": "Bluesky",
+                        "icon_url": "https://web-cdn.bsky.app/static/apple-touch-icon.png"
                     }
                 };
 
