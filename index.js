@@ -95,7 +95,7 @@ async function runBluesky() {
                     "color": 0x156cc7,
                     "timestamp": (new Date(data.commit.record.createdAt)),
                     "author": {
-                        "name": accountName,
+                        "name": `${accountName} (@${profileInfo.data.handle})`,
                         "icon_url": profileInfo.data.avatar,
                         "url": `https://bsky.app/profile/${data.did}`
                     },
