@@ -2,7 +2,7 @@
 Monitors Bluesky posts from configured accounts and sends them to Discord webhooks in embed form
 
 ### Example:
-![Discord_FtOc5txjqa](https://github.com/user-attachments/assets/5a35e7db-ab7c-4a20-aa6b-c44d0f8a4eff)
+![image](https://github.com/user-attachments/assets/687986c9-217c-43eb-8060-3bce06cfa78d)
 
 ## Running
 Requires NodeJS
